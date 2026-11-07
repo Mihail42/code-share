@@ -1,0 +1,47 @@
+# Default config to use for run_and_record_batch.py
+# Note that the paths are relative to the project root
+
+experiment_type: test_only    # Which research question the runs belong to (stored with every run in the database):
+                              #   test_only | alter_hardware | alter_parameters | alter_both
+
+training_config: runner/configs/training/3DBall.yaml # Config path for the actual training session
+
+env_path: builds/3DBall.exe   # Path to the unity build (in this case for windows)
+
+no_graphics: true             # true = run the build without rendering (simulation still runs, faster and lighter)
+num_envs: 1                   # How many Unity copies train the same 'brain' together (passed as --num-envs)
+                              # e.g. 2 copies x 12 agents = 24 agents collecting experience for one model
+agents_per_env: 12            # How many agents one Unity copy has (3DBall = 12) - only recorded, not passed on
+                              # (num_envs and agents_per_env are only in the CSV for now, the database has no columns for them)
+extra_args: []                # Extra arguments passed straight to mlagents-learn (e.g. ["--time-scale=20"])
+                              # do not put --num-envs here, use num_envs above
+
+total_runs: 5                 # How many runs of the same training config to do, one after another (seeds per seed_mode below)
+# total_runs: 1                 # How many runs of the same training config to do, one after another (seeds per seed_mode below)
+
+seed_mode: increment          # Specify what seed rule to follow:
+                              #   fixed     - every run uses 'seed' (identical runs: measures system noise/variance)
+                              #   increment - run 1 uses 'seed', run 2 'seed'+1, ...
+                              #   random    - a new random seed per run
+seed: 1                       # Number for specific seed, or null for a random start value
+
+early_stop:                   # Specifies the condition for early stop
+                              # (threshold/consecutive are also stored with each run when enabled is false)
+  enabled: false              # When true training will stop when the conditions below are met
+  threshold: 95.0             # Specifies the mean reward to reach for the consecutive results
+  consecutive: 3              # How many consecutive mean rewards should be >= to the threshold
+
+hardware:                     # Specs that can't be detected reliably. null = auto-detect, or 0 / "unknown" if that fails
+  ram_speed_mhz: null         # e.g. 3200 (Windows: read via PowerShell when null)
+  ram_type: null              # e.g. "DDR4", "DDR5", "LPDDR5" (Windows: read via PowerShell when null)
+  p_cores: null               # Logical core (thread) numbers of the P-cores, e.g. [0, 1, 2, 3, ..., 11]
+  e_cores: null               # Logical core (thread) numbers of the E-cores, e.g. [12, 13, ..., 19]
+                              # when both are null every core counts as a P-core and the E-core values are 0
+  p_core_max_ghz: null        # Max clock of the P-cores (null = the max clock reported by the system)
+  e_core_max_ghz: null        # Max clock of the E-cores (null = 0)
+                              # Inside a Docker container the CPU/RAM limits (--cpus, --cpuset-cpus, --memory)
+                              # are read automatically and stored as the allocated cores / RAM limit
+
+sample_interval_s: 1.0        # How often the script collects the realtime system utilization (CPU, RAM, clock)
+output_dir: runner/output     # Path to the folder with performance.csv (backup of every run) and train.log of failed runs
+base_port: 5005               # The port used for training (extra Unity copies use the ports right after it)
